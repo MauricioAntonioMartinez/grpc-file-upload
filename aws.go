@@ -6,13 +6,12 @@ import (
 	"sort"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 )
 
+// AwsStorage is an implementation of Storage interface
 type AwsStorage struct {
 	conf       AwsConfig
 	uploadId   *string
@@ -21,9 +20,11 @@ type AwsStorage struct {
 	parts      []*s3.CompletedPart
 }
 
+// AwsConfig everyting needed to upload to AWS
 type AwsConfig struct {
-	Bucket string
-	Key    string
+	Bucket string        //  Bucket to send the file to.
+	Key    string        //  key of the file to send.
+	Config []*aws.Config // you might skip this filed if you have env variables set or aws roles are already setted for you.
 }
 
 type awsPart struct {
@@ -32,6 +33,7 @@ type awsPart struct {
 	partID   int
 }
 
+// NewAwsStorage is a constructor to retreive an AwsStorage struct.
 func NewAwsStorage(conf AwsConfig) *AwsStorage {
 	return &AwsStorage{
 		conf:  conf,
@@ -40,8 +42,8 @@ func NewAwsStorage(conf AwsConfig) *AwsStorage {
 }
 
 func (u *AwsStorage) init() error {
-	mySession := session.Must(session.NewSession())
-	svc := s3.New(mySession, aws.NewConfig().WithRegion("us-east-1"))
+	mySession := session.Must(session.NewSession(u.conf.Config...))
+	svc := s3.New(mySession)
 
 	u.svc = svc
 	multi, err := svc.CreateMultipartUpload(&s3.CreateMultipartUploadInput{
@@ -121,32 +123,4 @@ func (u *AwsStorage) closeUpload() error {
 	}
 	fmt.Println("Multipart closed file uploaded.")
 	return err
-}
-
-type AwsService struct {
-	Region   string
-	S3Client s3iface.S3API
-	Signer   *v4.Signer
-}
-
-func NewAwsService(region string, accessKey string, secretKey string, sessionToken string) (*AwsService, error) {
-	creds := credentials.NewStaticCredentials(accessKey, secretKey, sessionToken)
-	awsConfig := aws.NewConfig().
-		WithRegion(region).
-		WithCredentials(creds).
-		WithCredentialsChainVerboseErrors(true)
-	sess, err := session.NewSession(awsConfig)
-	if err != nil {
-		return nil, err
-	}
-	svc := s3.New(sess)
-
-	signer := v4.NewSigner(creds)
-	v4.WithUnsignedPayload(signer)
-
-	return &AwsService{
-		Region:   region,
-		S3Client: svc,
-		Signer:   signer,
-	}, nil
 }

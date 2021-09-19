@@ -5,7 +5,7 @@ option go_package = "github.com/MauricioAntonioMartinez/grpc-file-upload/file";
 
 
 message File { 
-    bytes data = 1;
+    bytes data = 1; // you need a message of this type to store the data
 }
 
 message FileData { 

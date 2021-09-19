@@ -1,7 +1,6 @@
 package upload
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -29,6 +28,7 @@ type UploaderConfig struct {
 	MessageNumber int
 	MaxSize       int
 	ChuckSize     int
+	Verbose       bool
 }
 
 func NewUploader(conf UploaderConfig, storage SourceStorage) *Uploader {
@@ -45,7 +45,7 @@ func NewUploader(conf UploaderConfig, storage SourceStorage) *Uploader {
 type UploaderResponse struct{}
 
 func (u *Uploader) Upload(stream Stream) (*UploaderResponse, error) {
-	partSize, fileSize, buffer, store := 0, 0, bytes.Buffer{}, []byte{}
+	partSize, fileSize, partData := 0, 0, []byte{}
 
 	if err := initStorage(u.Storage); err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (u *Uploader) Upload(stream Stream) (*UploaderResponse, error) {
 		}
 
 		data := u.getData()
-		store = append(store, data...)
+		partData = append(partData, data...)
 		size := len(data)
 		fileSize += size
 		partSize += size
@@ -79,17 +79,10 @@ func (u *Uploader) Upload(stream Stream) (*UploaderResponse, error) {
 
 		if partSize >= u.conf.ChuckSize {
 			u.wait.Add(1)
-			u.parts <- u.Storage.newPart(store)
-			store = []byte{}
-			buffer.Reset()
+			u.parts <- u.Storage.newPart(partData)
+			partData = []byte{}
 			partSize = 0
 		}
-		_, err = buffer.Write(data)
-
-		if err != nil {
-			return nil, err
-		}
-
 	}
 
 	u.close <- true

@@ -35,9 +35,12 @@ func main() {
 
 func (s *Server) UploadFile(stream file.UploadService_UploadFileServer) error {
 
-	store := upload.NewAwsStorage(upload.AwsConfig{
+	_ = upload.NewAwsStorage(upload.AwsConfig{
 		Bucket: "obok-test",
 		Key:    "video",
+	})
+	fsStorage := upload.NewFileSystemStorage(upload.FileSystemStorageConfig{
+		Path: "./files/myimage.png",
 	})
 
 	up := upload.NewUploader(upload.UploaderConfig{
@@ -45,7 +48,7 @@ func (s *Server) UploadFile(stream file.UploadService_UploadFileServer) error {
 		MessageNumber: 0,
 		MaxSize:       1024 * 1024 * 100 * 10, // 1Gig
 		ChuckSize:     1024 * 1024 * 10,       // UploadPa r ts  o f 1Mb
-	}, store)
+	}, fsStorage)
 
 	_, err := up.Upload(stream)
 	fmt.Println(err)
@@ -56,15 +59,3 @@ func (s *Server) UploadFile(stream file.UploadService_UploadFileServer) error {
 	})
 
 }
-
-// func saveImage(buffer bytes.Buffer) (string, error) {
-
-// 	imageID, err := uuid.NewRandom()
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	err = os.WriteFile(fmt.Sprintf("%s.%s", imageID.String(), "png"), buffer.Bytes(), 0644)
-// 	return imageID.String(), err
-
-// }
