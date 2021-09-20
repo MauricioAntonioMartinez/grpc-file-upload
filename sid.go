@@ -54,6 +54,13 @@ func (u *Uploader) Upload(stream Stream) (*UploaderResponse, error) {
 	go u.partsSender()
 
 	for {
+
+		reset := func() {
+			u.wait.Add(1)
+			u.parts <- u.Storage.newPart(partData)
+			partData = []byte{}
+			partSize = 0
+		}
 		err := contextErr(stream.Context())
 		if err != nil {
 			return nil, err
@@ -61,6 +68,9 @@ func (u *Uploader) Upload(stream Stream) (*UploaderResponse, error) {
 
 		err = stream.RecvMsg(u.msg)
 		if err == io.EOF {
+			if len(partData) > 0 {
+				reset()
+			}
 			break
 		}
 		if err != nil {
@@ -78,10 +88,7 @@ func (u *Uploader) Upload(stream Stream) (*UploaderResponse, error) {
 		}
 
 		if partSize >= u.conf.ChuckSize {
-			u.wait.Add(1)
-			u.parts <- u.Storage.newPart(partData)
-			partData = []byte{}
-			partSize = 0
+			reset()
 		}
 	}
 

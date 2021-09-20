@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	upload "github.com/MauricioAntonioMartinez/grpc-file-upload"
 	file "github.com/MauricioAntonioMartinez/grpc-file-upload/example/proto"
@@ -39,18 +40,25 @@ func (s *Server) UploadFile(stream file.UploadService_UploadFileServer) error {
 		Bucket: "obok-test",
 		Key:    "video",
 	})
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(dir)
+
 	fsStorage := upload.NewFileSystemStorage(upload.FileSystemStorageConfig{
-		Path: "./files/myimage.png",
+		Path: fmt.Sprintf("%s/files/myimage.png", dir),
 	})
 
 	up := upload.NewUploader(upload.UploaderConfig{
 		MessageType:   &file.File{},
 		MessageNumber: 0,
 		MaxSize:       1024 * 1024 * 100 * 10, // 1Gig
-		ChuckSize:     1024 * 1024 * 10,       // UploadPa r ts  o f 1Mb
+		ChuckSize:     1024 * 1024 * 10,       // UploadPa r ts  o f 1M b
 	}, fsStorage)
 
-	_, err := up.Upload(stream)
+	_, err = up.Upload(stream)
 	fmt.Println(err)
 
 	return stream.SendAndClose(&file.FileResponse{

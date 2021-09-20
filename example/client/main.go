@@ -27,7 +27,7 @@ func main() {
 		log.Fatal(err)
 		return
 	}
-	f, err := os.Open("./vid.mkv")
+	f, err := os.Open("./gopher.png")
 	reader := bufio.NewReader(f)
 	checkErr(err)
 	defer f.Close()
